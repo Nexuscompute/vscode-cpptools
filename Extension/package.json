@@ -5426,7 +5426,7 @@
     "comment-json": "^4.1.1",
     "editorconfig": "^0.15.3",
     "escape-string-regexp": "^2.0.0",
-    "glob": "^7.1.6",
+    "glob": "^7.2.3",
     "https-proxy-agent": "^2.2.4",
     "minimatch": "^3.0.4",
     "mkdirp": "^0.5.5",
