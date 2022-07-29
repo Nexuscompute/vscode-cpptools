@@ -5430,7 +5430,7 @@
     "glob": "^7.1.6",
     "https-proxy-agent": "^2.2.4",
     "minimatch": "^3.0.4",
-    "mkdirp": "^0.5.5",
+    "mkdirp": "^0.5.6",
     "plist": "^3.0.5",
     "tmp": "^0.2.1",
     "vscode-cpptools": "^6.1.0",
