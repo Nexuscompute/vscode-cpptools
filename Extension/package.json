@@ -5968,7 +5968,7 @@
     "escape-string-regexp": "^2.0.0",
     "glob": "^7.1.6",
     "minimatch": "^3.0.5",
-    "mkdirp": "^0.5.5",
+    "mkdirp": "^0.5.6",
     "node-loader": "^2.0.0",
     "plist": "^3.0.5",
     "posix-getopt": "^1.2.1",
