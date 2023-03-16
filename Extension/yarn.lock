@@ -5171,10 +5171,10 @@ sprintf-js@~1.0.2:
   resolved "https://registry.yarnpkg.com/sprintf-js/-/sprintf-js-1.0.3.tgz#04e6926f662895354f3dd015203633b857297e2c"
   integrity sha1-BOaSb2YolTVPPdAVIDYzuFcpfiw=
 
-ssh-config@^4.1.0:
-  version "4.1.6"
-  resolved "https://registry.yarnpkg.com/ssh-config/-/ssh-config-4.1.6.tgz#008eee24f5e5029dc64d50de4a5a7a12342db8b1"
-  integrity sha512-YdPYn/2afoBonSFoMSvC1FraA/LKKrvy8UvbvAFGJ8gdlKuANvufLLkf8ynF2uq7Tl5+DQBIFyN37//09nAgNQ==
+ssh-config@^4.2.0:
+  version "4.2.1"
+  resolved "https://registry.yarnpkg.com/ssh-config/-/ssh-config-4.2.1.tgz#4fee816bb7cb27637d37e1d013a1f88622e2c057"
+  integrity sha512-0FdXhdpjwzo5Cao8UJdCv+MJ+7dK/9jvi6CaJrg/XpKRu7ryn43BUIYnPQt+IS5XEqmBn3cxOUkU4FM3m/Wkqw==
 
 stack-trace@0.0.10:
   version "0.0.10"
