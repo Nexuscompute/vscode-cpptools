@@ -6073,7 +6073,7 @@
     "node-loader": "^2.0.0",
     "plist": "^3.0.5",
     "posix-getopt": "^1.2.1",
-    "shell-quote": "^1.7.3",
+    "shell-quote": "^1.8.1",
     "ssh-config": "^4.1.0",
     "tmp": "^0.2.1",
     "vscode-cpptools": "^6.1.0",
