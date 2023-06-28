@@ -6064,7 +6064,7 @@
   },
   "dependencies": {
     "@types/lodash": "^4.14.192",
-    "@vscode/extension-telemetry": "^0.6.2",
+    "@vscode/extension-telemetry": "^0.7.7",
     "chokidar": "^3.5.3",
     "comment-json": "^4.1.1",
     "editorconfig": "^0.15.3",
