@@ -1040,13 +1040,6 @@ await-notify@^1.0.1:
   resolved "https://registry.yarnpkg.com/await-notify/-/await-notify-1.0.1.tgz#0b48133b22e524181e11557665185f2a2f3ce47c"
   integrity sha512-eT6XN2ycPKvuiffzUNmU0dnGmmLw+TexMW7UKOyf5utdVrWx14PR2acRIfy6ZfFWRAv8twt1X74VUgd9RnDmfQ==
 
-axios@^0.26.1:
-  version "0.26.1"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-0.26.1.tgz#1ede41c51fcf51bbbd6fd43669caaa4f0495aaa9"
-  integrity sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==
-  dependencies:
-    follow-redirects "^1.14.8"
-
 babel-runtime@^6.11.6:
   version "6.26.0"
   resolved "https://registry.yarnpkg.com/babel-runtime/-/babel-runtime-6.26.0.tgz#965c7058668e82b55d7bfe04ff2337bc8b5647fe"
@@ -2243,11 +2236,6 @@ flush-write-stream@^1.0.2:
   dependencies:
     inherits "^2.0.3"
     readable-stream "^2.3.6"
-
-follow-redirects@^1.14.8:
-  version "1.15.2"
-  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.2.tgz#b460864144ba63f2681096f274c4e57026da2c13"
-  integrity sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==
 
 for-each@^0.3.3:
   version "0.3.3"
@@ -4719,12 +4707,10 @@ tapable@^2.1.1, tapable@^2.2.0:
   resolved "https://registry.yarnpkg.com/tapable/-/tapable-2.2.1.tgz#1967a73ef4060a82f12ab96af86d52fdb76eeca0"
   integrity sha512-GNzQvQTOIP6RyTfE2Qxb8ZVlNmw0n88vp1szwWRimP02mnTsx3Wtn5qRdqY9w2XduFNUgvOwhNnQsjwCp+kqaQ==
 
-tas-client@0.1.58:
-  version "0.1.58"
-  resolved "https://registry.yarnpkg.com/tas-client/-/tas-client-0.1.58.tgz#67d66bf0e27df5276ebc751105e6ad47791c36d8"
-  integrity sha512-fOWii4wQXuo9Zl0oXgvjBzZWzKc5MmUR6XQWX93WU2c1SaP1plPo/zvXP8kpbZ9fvegFOHdapszYqMTRq/SRtg==
-  dependencies:
-    axios "^0.26.1"
+tas-client@0.2.33:
+  version "0.2.33"
+  resolved "https://registry.yarnpkg.com/tas-client/-/tas-client-0.2.33.tgz#451bf114a8a64748030ce4068ab7d079958402e6"
+  integrity sha512-V+uqV66BOQnWxvI6HjDnE4VkInmYZUQ4dgB7gzaDyFyFSK1i1nF/j7DpS9UbQAgV9NaF1XpcyuavnM1qOeiEIg==
 
 terser-webpack-plugin@^5.3.7:
   version "5.3.9"
@@ -5174,12 +5160,12 @@ vscode-nls@^5.0.0:
   resolved "https://registry.yarnpkg.com/vscode-nls/-/vscode-nls-5.2.0.tgz#3cb6893dd9bd695244d8a024bdf746eea665cc3f"
   integrity sha512-RAaHx7B14ZU04EU31pT+rKz2/zSl7xMsfIZuo8pd+KZO6PXtQmpevpq3vxvWNcrGbdmhM/rr5Uw5Mz+NBfhVng==
 
-vscode-tas-client@^0.1.27:
-  version "0.1.63"
-  resolved "https://registry.yarnpkg.com/vscode-tas-client/-/vscode-tas-client-0.1.63.tgz#df89e67e9bf7ecb46471a0fb8a4a522d2aafad65"
-  integrity sha512-TY5TPyibzi6rNmuUB7eRVqpzLzNfQYrrIl/0/F8ukrrbzOrKVvS31hM3urE+tbaVrnT+TMYXL16GhX57vEowhA==
+vscode-tas-client@^0.1.84:
+  version "0.1.84"
+  resolved "https://registry.yarnpkg.com/vscode-tas-client/-/vscode-tas-client-0.1.84.tgz#906bdcfd8c9e1dc04321d6bc0335184f9119968e"
+  integrity sha512-rUTrUopV+70hvx1hW5ebdw1nd6djxubkLvVxjGdyD/r5v/wcVF41LIfiAtbm5qLZDtQdsMH1IaCuDoluoIa88w==
   dependencies:
-    tas-client "0.1.58"
+    tas-client "0.2.33"
 
 watchpack@^2.4.0:
   version "2.4.0"
