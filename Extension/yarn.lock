@@ -4544,10 +4544,10 @@ split@^1.0.1:
   dependencies:
     through "2"
 
-ssh-config@^4.1.0:
-  version "4.2.1"
-  resolved "https://registry.yarnpkg.com/ssh-config/-/ssh-config-4.2.1.tgz#4fee816bb7cb27637d37e1d013a1f88622e2c057"
-  integrity sha512-0FdXhdpjwzo5Cao8UJdCv+MJ+7dK/9jvi6CaJrg/XpKRu7ryn43BUIYnPQt+IS5XEqmBn3cxOUkU4FM3m/Wkqw==
+ssh-config@^4.4.2:
+  version "4.4.3"
+  resolved "https://registry.yarnpkg.com/ssh-config/-/ssh-config-4.4.3.tgz#bfebffa13a1c8eb276b117bd3f2ec4ef37788754"
+  integrity sha512-Q7ncz+srt2qFWczmb8T2+sYehQpY1LSKId4iBFO3QoXwWdEke2mkF7phDmkTnDfAd14sKCVgEZof3suzSw+3pg==
 
 stack-trace@0.0.10:
   version "0.0.10"
