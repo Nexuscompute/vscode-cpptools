@@ -6526,9 +6526,9 @@
         "xml2js": "^0.5.0"
     },
     "dependencies": {
-        "@vscode/extension-telemetry": "^0.6.2",
-        "chokidar": "^3.5.3",
-        "comment-json": "^4.1.1",
+        "@vscode/extension-telemetry": "^0.9.7",
+        "chokidar": "^3.6.0",
+        "comment-json": "^4.2.5",
         "editorconfig": "^0.15.3",
         "escape-string-regexp": "^2.0.0",
         "glob": "^7.1.6",
@@ -6540,12 +6540,12 @@
         "plist": "^3.0.5",
         "posix-getopt": "^1.2.1",
         "shell-quote": "^1.7.3",
-        "ssh-config": "^4.1.0",
-        "tmp": "^0.2.1",
+        "ssh-config": "^4.4.4",
+        "tmp": "^0.2.3",
         "vscode-cpptools": "^6.1.0",
         "vscode-languageclient": "^8.1.0-next.4",
         "vscode-nls": "^5.0.0",
-        "vscode-tas-client": "^0.1.75",
+        "vscode-tas-client": "^0.1.84",
         "which": "^2.0.2"
     },
     "resolutions": {
