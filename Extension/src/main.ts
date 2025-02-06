@@ -70,7 +70,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<CppToo
     util.checkDistro(info);
     await checkVsixCompatibility();
     LanguageServer.UpdateInsidersAccess();
-    await LanguageServer.preReleaseCheck();
+
+    const ignoreRecommendations: boolean | undefined = vscode.workspace.getConfiguration("extensions", null).get<boolean>("ignoreRecommendations");
+    if (ignoreRecommendations !== true) {
+        await LanguageServer.preReleaseCheck();
+    }
 
     const settings: CppSettings = new CppSettings((vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) ? vscode.workspace.workspaceFolders[0]?.uri : undefined);
     let isOldMacOs: boolean = false;
@@ -142,7 +146,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CppToo
     if (shouldActivateLanguageServer) {
         await LanguageServer.activate();
     } else if (isIntelliSenseEngineDisabled) {
-        LanguageServer.registerCommands(false);
+        await LanguageServer.registerCommands(false);
         // The check here for isIntelliSenseEngineDisabled avoids logging
         // the message on old Macs that we've already displayed a warning for.
         log(localize("intellisense.disabled", "intelliSenseEngine is disabled"));
@@ -217,6 +221,7 @@ function sendTelemetry(info: PlatformInformation): void {
         default:
             break;
     }
+    telemetryProperties['appName'] = vscode.env.appName;
     Telemetry.logDebuggerEvent("acquisition", telemetryProperties);
     logMachineIdMappings().catch(logAndReturn.undefined);
 }

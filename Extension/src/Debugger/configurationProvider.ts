@@ -331,7 +331,7 @@ export class DebugConfigurationProvider implements vscode.DebugConfigurationProv
 
         // Run deploy steps
         if (config.deploySteps && config.deploySteps.length !== 0) {
-            const codeVersion: number[] = vscode.version.split('.').map(num => parseInt(num, undefined));
+            const codeVersion: number[] = util.getVsCodeVersion();
             if ((util.isNumber(codeVersion[0]) && codeVersion[0] < 1) || (util.isNumber(codeVersion[0]) && codeVersion[0] === 1 && util.isNumber(codeVersion[1]) && codeVersion[1] < 69)) {
                 void logger.getOutputChannelLogger().showErrorMessage(localize("vs.code.1.69+.required", "'deploySteps' require VS Code 1.69+."));
                 return undefined;
@@ -584,7 +584,10 @@ export class DebugConfigurationProvider implements vscode.DebugConfigurationProv
 
     private showErrorIfClNotAvailable(_configurationLabel: string): boolean {
         if (!process.env.DevEnvDir || process.env.DevEnvDir.length === 0) {
-            void vscode.window.showErrorMessage(localize("cl.exe.not.available", "{0} build and debug is only usable when VS Code is run from the Developer Command Prompt for VS.", "cl.exe"));
+            void vscode.window.showErrorMessage(localize({
+                key: "cl.exe.not.available",
+                comment: ["{0} is a command option in a menu. {1} is the product name \"Developer Command Prompt for VS\"."]
+            }, "{0} is only usable when VS Code is run from the {1}.", `cl.exe ${this.buildAndDebugActiveFileStr()}`, "Developer Command Prompt for VS"));
             return true;
         }
         return false;
@@ -1162,16 +1165,16 @@ abstract class DefaultConfigurationProvider implements IConfigurationAssetProvid
 
 class WindowsConfigurationProvider extends DefaultConfigurationProvider {
     private executable: string = "a.exe";
-    private pipeProgram: string = "<" + localize("path.to.pipe.program", "full path to pipe program such as {0}", "plink.exe").replace(/"/g, '\\"') + ">";
+    private pipeProgram: string = "<" + localize("path.to.pipe.program", "full path to pipe program such as {0}", "plink.exe").replace(/"/g, '') + ">";
     private MIMode: string = 'gdb';
     private setupCommandsBlock: string = `"setupCommands": [
     {
-        "description": "${localize("enable.pretty.printing", "Enable pretty-printing for {0}", "gdb").replace(/"/g, '\\"')}",
+        "description": "${localize("enable.pretty.printing", "Enable pretty-printing for {0}", "gdb").replace(/"/g, '')}",
         "text": "-enable-pretty-printing",
         "ignoreFailures": true
     },
     {
-        "description": "${localize("enable.intel.disassembly.flavor", "Set Disassembly Flavor to {0}", "Intel").replace(/"/g, '\\"')}",
+        "description": "${localize("enable.intel.disassembly.flavor", "Set Disassembly Flavor to {0}", "Intel").replace(/"/g, '')}",
         "text": "-gdb-set disassembly-flavor intel",
         "ignoreFailures": true
     }
@@ -1205,12 +1208,12 @@ class LinuxConfigurationProvider extends DefaultConfigurationProvider {
     private MIMode: string = 'gdb';
     private setupCommandsBlock: string = `"setupCommands": [
     {
-        "description": "${localize("enable.pretty.printing", "Enable pretty-printing for {0}", "gdb").replace(/"/g, '\\"')}",
+        "description": "${localize("enable.pretty.printing", "Enable pretty-printing for {0}", "gdb").replace(/"/g, '')}",
         "text": "-enable-pretty-printing",
         "ignoreFailures": true
     },
     {
-        "description": "${localize("enable.intel.disassembly.flavor", "Set Disassembly Flavor to {0}", "Intel").replace(/"/g, '\\"')}",
+        "description": "${localize("enable.intel.disassembly.flavor", "Set Disassembly Flavor to {0}", "Intel").replace(/"/g, '')}",
         "text": "-gdb-set disassembly-flavor intel",
         "ignoreFailures": true
     }

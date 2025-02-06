@@ -62,8 +62,8 @@ export interface ConfigurationJson {
 
 export interface Configuration {
     name: string;
-    compilerPathInCppPropertiesJson?: string;
-    compilerPath?: string;
+    compilerPathInCppPropertiesJson?: string | null;
+    compilerPath?: string | null;
     compilerPathIsExplicit?: boolean;
     compilerArgs?: string[];
     compilerArgsLegacy?: string[];
@@ -78,8 +78,8 @@ export interface Configuration {
     defines?: string[];
     intelliSenseMode?: string;
     intelliSenseModeIsExplicit?: boolean;
-    compileCommandsInCppPropertiesJson?: string;
-    compileCommands?: string;
+    compileCommandsInCppPropertiesJson?: string[];
+    compileCommands?: string[];
     forcedInclude?: string[];
     configurationProviderInCppPropertiesJson?: string;
     configurationProvider?: string;
@@ -136,9 +136,9 @@ export class CppProperties {
     private currentConfigurationIndex: PersistentFolderState<number> | undefined;
     private configFileWatcher: vscode.FileSystemWatcher | null = null;
     private configFileWatcherFallbackTime: Date = new Date(); // Used when file watching fails.
-    private compileCommandsFile: vscode.Uri | undefined | null = undefined;
+    private compileCommandsFiles: Set<string> = new Set();
     private compileCommandsFileWatchers: fs.FSWatcher[] = [];
-    private compileCommandsFileWatcherFallbackTime: Date = new Date(); // Used when file watching fails.
+    private compileCommandsFileWatcherFallbackTime: Map<string, Date> = new Map<string, Date>(); // Used when file watching fails.
     private defaultCompilerPath: string | null = null;
     private knownCompilers?: KnownCompiler[];
     private defaultCStandard: string | null = null;
@@ -389,7 +389,8 @@ export class CppProperties {
             configuration.windowsSdkVersion = this.defaultWindowsSdkVersion;
         }
         if (isUnset(settings.defaultCompilerPath) && this.defaultCompilerPath &&
-            (isUnset(settings.defaultCompileCommands) || settings.defaultCompileCommands === "") && !configuration.compileCommands) {
+            (isUnset(settings.defaultCompileCommands) || settings.defaultCompileCommands?.length === 0) &&
+            (isUnset(configuration.compileCommands) || configuration.compileCommands?.length === 0)) {
             // compile_commands.json already specifies a compiler. compilerPath overrides the compile_commands.json compiler so
             // don't set a default when compileCommands is in use.
 
@@ -594,7 +595,7 @@ export class CppProperties {
             configuration.intelliSenseMode === "${default}") {
             return "";
         }
-        const resolvedCompilerPath: string = this.resolvePath(configuration.compilerPath);
+        const resolvedCompilerPath: string = this.resolvePath(configuration.compilerPath, false, false);
         const settings: CppSettings = new CppSettings(this.rootUri);
         const compilerPathAndArgs: util.CompilerPathAndArgs = util.extractCompilerPathAndArgs(!!settings.legacyCompilerArgsBehavior, resolvedCompilerPath);
 
@@ -684,7 +685,7 @@ export class CppProperties {
             this.parsePropertiesFile(); // Clear out any modifications we may have made internally.
             const config: Configuration | undefined = this.CurrentConfiguration;
             if (config) {
-                config.compileCommands = path;
+                config.compileCommands = [path];
                 this.writeToJson();
             }
             // Any time parsePropertiesFile is called, configurationJson gets
@@ -938,7 +939,7 @@ export class CppProperties {
             configuration.macFrameworkPath = this.updateConfigurationStringArray(configuration.macFrameworkPath, settings.defaultMacFrameworkPath, env);
             configuration.windowsSdkVersion = this.updateConfigurationString(configuration.windowsSdkVersion, settings.defaultWindowsSdkVersion, env);
             configuration.forcedInclude = this.updateConfigurationPathsArray(configuration.forcedInclude, settings.defaultForcedInclude, env, false);
-            configuration.compileCommands = this.updateConfigurationString(configuration.compileCommands, settings.defaultCompileCommands, env);
+            configuration.compileCommands = this.updateConfigurationStringArray(configuration.compileCommands, settings.defaultCompileCommands, env);
             configuration.compilerArgs = this.updateConfigurationStringArray(configuration.compilerArgs, settings.defaultCompilerArgs, env);
             configuration.cStandard = this.updateConfigurationString(configuration.cStandard, settings.defaultCStandard, env);
             configuration.cppStandard = this.updateConfigurationString(configuration.cppStandard, settings.defaultCppStandard, env);
@@ -951,7 +952,7 @@ export class CppProperties {
                 // compile_commands.json already specifies a compiler. compilerPath overrides the compile_commands.json compiler so
                 // don't set a default when compileCommands is in use.
                 configuration.compilerPath = this.updateConfigurationString(configuration.compilerPath, settings.defaultCompilerPath, env, true);
-                configuration.compilerPathIsExplicit = configuration.compilerPathIsExplicit || settings.defaultCompilerPath !== undefined;
+                configuration.compilerPathIsExplicit = configuration.compilerPathIsExplicit || settings.defaultCompilerPath !== null;
                 if (configuration.compilerPath === undefined) {
                     if (!!this.defaultCompilerPath && this.trustedCompilerFound) {
                         // If no config value yet set for these, pick up values from the defaults, but don't consider them explicit.
@@ -991,7 +992,6 @@ export class CppProperties {
                     configuration.compilerPath = settings.defaultCompilerPath;
                 }
                 if (configuration.compilerPath === null) {
-                    configuration.compilerPath = undefined;
                     configuration.compilerPathIsExplicit = true;
                 } else if (configuration.compilerPath !== undefined) {
                     configuration.compilerPath = util.resolveVariables(configuration.compilerPath, env);
@@ -1041,8 +1041,8 @@ export class CppProperties {
                     && !settings.defaultForcedInclude
                     && !settings.defaultCompileCommands
                     && !settings.defaultCompilerArgs
-                    && settings.defaultCStandard === ""
-                    && settings.defaultCppStandard === ""
+                    && !settings.defaultCStandard
+                    && !settings.defaultCppStandard
                     && settings.defaultIntelliSenseMode === ""
                     && !settings.defaultConfigurationProvider;
 
@@ -1093,7 +1093,13 @@ export class CppProperties {
             }
 
             if (configuration.compileCommands) {
-                configuration.compileCommands = this.resolvePath(configuration.compileCommands);
+                configuration.compileCommands = configuration.compileCommands.map((path: string) => this.resolvePath(path));
+                configuration.compileCommands.forEach((path: string) => {
+                    if (!this.compileCommandsFileWatcherFallbackTime.has(path)) {
+                        // Start tracking the fallback time for a new path.
+                        this.compileCommandsFileWatcherFallbackTime.set(path, new Date());
+                    }
+                });
             }
 
             if (configuration.forcedInclude) {
@@ -1105,9 +1111,30 @@ export class CppProperties {
             }
         }
 
+        this.clearStaleCompileCommandsFileWatcherFallbackTimes();
         this.updateCompileCommandsFileWatchers();
         if (!this.configurationIncomplete) {
             this.onConfigurationsChanged();
+        }
+    }
+
+    private clearStaleCompileCommandsFileWatcherFallbackTimes(): void {
+        // We need to keep track of relevant timestamps, so we cannot simply clear all entries.
+        // Instead, we clear entries that are no longer relevant.
+        const trackedCompileCommandsPaths: Set<string> = new Set();
+        this.configurationJson?.configurations.forEach((config: Configuration) => {
+            config.compileCommands?.forEach((path: string) => {
+                const compileCommandsFile = this.resolvePath(path);
+                if (compileCommandsFile.length > 0) {
+                    trackedCompileCommandsPaths.add(compileCommandsFile);
+                }
+            });
+        });
+
+        for (const path of this.compileCommandsFileWatcherFallbackTime.keys()) {
+            if (!trackedCompileCommandsPaths.has(path)) {
+                this.compileCommandsFileWatcherFallbackTime.delete(path);
+            }
         }
     }
 
@@ -1122,12 +1149,12 @@ export class CppProperties {
             this.compileCommandsFileWatchers = []; // reset it
             const filePaths: Set<string> = new Set<string>();
             this.configurationJson.configurations.forEach(c => {
-                if (c.compileCommands) {
-                    const fileSystemCompileCommandsPath: string = this.resolvePath(c.compileCommands);
-                    if (fs.existsSync(fileSystemCompileCommandsPath)) {
-                        filePaths.add(fileSystemCompileCommandsPath);
+                c.compileCommands?.forEach((path: string) => {
+                    const compileCommandsFile: string = this.resolvePath(path);
+                    if (fs.existsSync(compileCommandsFile)) {
+                        filePaths.add(compileCommandsFile);
                     }
-                }
+                });
             });
             try {
                 filePaths.forEach((path: string) => {
@@ -1390,6 +1417,18 @@ export class CppProperties {
         return;
     }
 
+    private forceCompileCommandsAsArray(compileCommandsInCppPropertiesJson: any): string[] | undefined {
+        if (util.isString(compileCommandsInCppPropertiesJson) && compileCommandsInCppPropertiesJson.length > 0) {
+            return [compileCommandsInCppPropertiesJson];
+        } else if (util.isArrayOfString(compileCommandsInCppPropertiesJson)) {
+            const filteredArray: string[] = compileCommandsInCppPropertiesJson.filter(value => value.length > 0);
+            if (filteredArray.length > 0) {
+                return filteredArray;
+            }
+        }
+        return undefined;
+    }
+
     private parsePropertiesFile(): boolean {
         if (!this.propertiesFile) {
             this.configurationJson = undefined;
@@ -1419,6 +1458,13 @@ export class CppProperties {
                     }
                 }
             }
+
+            // Configuration.compileCommands is allowed to be defined as a string in the schema, but we send an array to the language server.
+            // For having a predictable behavior, we convert it here to an array of strings.
+            for (let i: number = 0; i < newJson.configurations.length; i++) {
+                newJson.configurations[i].compileCommands = this.forceCompileCommandsAsArray(<any>newJson.configurations[i].compileCommands);
+            }
+
             this.configurationJson = newJson;
             if (this.CurrentConfigurationIndex < 0 || this.CurrentConfigurationIndex >= newJson.configurations.length) {
                 const index: number | undefined = this.getConfigIndexForPlatform(newJson);
@@ -1516,7 +1562,7 @@ export class CppProperties {
         return success;
     }
 
-    private resolvePath(input_path: string | undefined, replaceAsterisks: boolean = true, assumeRelative: boolean = true): string {
+    private resolvePath(input_path: string | undefined | null, replaceAsterisks: boolean = true, assumeRelative: boolean = true): string {
         if (!input_path || input_path === "${default}") {
             return "";
         }
@@ -1539,10 +1585,18 @@ export class CppProperties {
         }
 
         if (assumeRelative) {
+            let quoted = false;
+            if (result.startsWith('"') && result.endsWith('"')) {
+                quoted = true;
+                result = result.slice(1, -1);
+            }
             // Make sure all paths result to an absolute path.
             // Do not add the root path to an unresolved env variable.
             if (!result.includes("env:") && !path.isAbsolute(result) && this.rootUri) {
                 result = path.join(this.rootUri.fsPath, result);
+            }
+            if (quoted) {
+                result = `"${result}"`;
             }
         }
 
@@ -1559,10 +1613,10 @@ export class CppProperties {
 
         // Check if config name is unique.
         errors.name = this.isConfigNameUnique(config.name);
-        let resolvedCompilerPath: string | undefined;
+        let resolvedCompilerPath: string | undefined | null;
         // Validate compilerPath
         if (config.compilerPath) {
-            resolvedCompilerPath = which.sync(config.compilerPath, { nothrow: true }) ?? undefined;
+            resolvedCompilerPath = which.sync(config.compilerPath, { nothrow: true });
         }
 
         if (resolvedCompilerPath === undefined) {
@@ -1582,6 +1636,7 @@ export class CppProperties {
                 (compilerPathAndArgs.compilerArgsFromCommandLineInPath && compilerPathAndArgs.compilerArgsFromCommandLineInPath.length > 0) &&
                 !resolvedCompilerPath.startsWith('"') &&
                 compilerPathAndArgs.compilerPath !== undefined &&
+                compilerPathAndArgs.compilerPath !== null &&
                 compilerPathAndArgs.compilerPath.includes(" ");
 
             const compilerPathErrors: string[] = [];
@@ -1590,7 +1645,7 @@ export class CppProperties {
             }
 
             // Get compiler path without arguments before checking if it exists
-            resolvedCompilerPath = compilerPathAndArgs.compilerPath;
+            resolvedCompilerPath = compilerPathAndArgs.compilerPath ?? undefined;
             if (resolvedCompilerPath) {
                 let pathExists: boolean = true;
                 const existsWithExeAdded: (path: string) => boolean = (path: string) => isWindows && !path.startsWith("/") && fs.existsSync(path + ".exe");
@@ -1632,15 +1687,15 @@ export class CppProperties {
         }
 
         // Validate paths (directories)
-        errors.includePath = this.validatePath(config.includePath, {globPaths: true});
+        errors.includePath = this.validatePath(config.includePath, { globPaths: true });
         errors.macFrameworkPath = this.validatePath(config.macFrameworkPath);
         errors.browsePath = this.validatePath(config.browse ? config.browse.path : undefined);
 
         // Validate files
-        errors.forcedInclude = this.validatePath(config.forcedInclude, {isDirectory: false, assumeRelative: false});
-        errors.compileCommands = this.validatePath(config.compileCommands, {isDirectory: false});
-        errors.dotConfig = this.validatePath(config.dotConfig, {isDirectory: false});
-        errors.databaseFilename = this.validatePath(config.browse ? config.browse.databaseFilename : undefined, {isDirectory: false});
+        errors.forcedInclude = this.validatePath(config.forcedInclude, { isDirectory: false, assumeRelative: false });
+        errors.compileCommands = this.validatePath(config.compileCommands, { isDirectory: false });
+        errors.dotConfig = this.validatePath(config.dotConfig, { isDirectory: false });
+        errors.databaseFilename = this.validatePath(config.browse ? config.browse.databaseFilename : undefined, { isDirectory: false });
 
         // Validate intelliSenseMode
         if (isWindows) {
@@ -1653,7 +1708,7 @@ export class CppProperties {
         return errors;
     }
 
-    private validatePath(input: string | string[] | undefined, {isDirectory = true, assumeRelative = true, globPaths = false} = {}): string | undefined {
+    private validatePath(input: string | string[] | undefined, { isDirectory = true, assumeRelative = true, globPaths = false } = {}): string | undefined {
         if (!input) {
             return undefined;
         }
@@ -1759,6 +1814,11 @@ export class CppProperties {
         const configurations: ConfigurationJson = jsonc.parse(configurationsText, undefined, true) as any;
         const currentConfiguration: Configuration = configurations.configurations[this.CurrentConfigurationIndex];
 
+        // Configuration.compileCommands is allowed to be defined as a string in the schema, but we send an array to the language server.
+        // For having a predictable behavior, we convert it here to an array of strings.
+        // Squiggles are still handled for both cases.
+        currentConfiguration.compileCommands = this.forceCompileCommandsAsArray(<any>currentConfiguration.compileCommands);
+
         let curTextStartOffset: number = 0;
         if (!currentConfiguration.name) {
             return;
@@ -1838,9 +1898,9 @@ export class CppProperties {
             curText = curText.substring(0, nextNameStart2);
         }
         if (this.prevSquiggleMetrics.get(currentConfiguration.name) === undefined) {
-            this.prevSquiggleMetrics.set(currentConfiguration.name, { PathNonExistent: 0, PathNotAFile: 0, PathNotADirectory: 0, CompilerPathMissingQuotes: 0, CompilerModeMismatch: 0, MultiplePathsNotAllowed: 0 });
+            this.prevSquiggleMetrics.set(currentConfiguration.name, { PathNonExistent: 0, PathNotAFile: 0, PathNotADirectory: 0, CompilerPathMissingQuotes: 0, CompilerModeMismatch: 0, MultiplePathsNotAllowed: 0, MultiplePathsShouldBeSeparated: 0 });
         }
-        const newSquiggleMetrics: { [key: string]: number } = { PathNonExistent: 0, PathNotAFile: 0, PathNotADirectory: 0, CompilerPathMissingQuotes: 0, CompilerModeMismatch: 0, MultiplePathsNotAllowed: 0 };
+        const newSquiggleMetrics: { [key: string]: number } = { PathNonExistent: 0, PathNotAFile: 0, PathNotADirectory: 0, CompilerPathMissingQuotes: 0, CompilerModeMismatch: 0, MultiplePathsNotAllowed: 0, MultiplePathsShouldBeSeparated: 0 };
         const isWindows: boolean = os.platform() === 'win32';
 
         // TODO: Add other squiggles.
@@ -1869,8 +1929,7 @@ export class CppProperties {
         // Check for path-related squiggles.
         const paths: string[] = [];
         let compilerPath: string | undefined;
-        for (const pathArray of [ currentConfiguration.browse ? currentConfiguration.browse.path : undefined,
-            currentConfiguration.includePath, currentConfiguration.macFrameworkPath ]) {
+        for (const pathArray of [currentConfiguration.browse ? currentConfiguration.browse.path : undefined, currentConfiguration.includePath, currentConfiguration.macFrameworkPath]) {
             if (pathArray) {
                 for (const curPath of pathArray) {
                     paths.push(`${curPath}`);
@@ -1886,9 +1945,10 @@ export class CppProperties {
                 }
             }
         }
-        if (currentConfiguration.compileCommands) {
-            paths.push(`${currentConfiguration.compileCommands}`);
-        }
+
+        currentConfiguration.compileCommands?.forEach((file: string) => {
+            paths.push(`${file}`);
+        });
 
         if (currentConfiguration.compilerPath) {
             // Unlike other cases, compilerPath may not start or end with " due to trimming of whitespace and the possibility of compiler args.
@@ -1902,6 +1962,8 @@ export class CppProperties {
         const forcedeIncludeEnd: number = forcedIncludeStart === -1 ? -1 : curText.indexOf("]", forcedIncludeStart);
         const compileCommandsStart: number = curText.search(/\s*\"compileCommands\"\s*:\s*\"/);
         const compileCommandsEnd: number = compileCommandsStart === -1 ? -1 : curText.indexOf('"', curText.indexOf('"', curText.indexOf(":", compileCommandsStart)) + 1);
+        const compileCommandsArrayStart: number = curText.search(/\s*\"compileCommands\"\s*:\s*\[/);
+        const compileCommandsArrayEnd: number = compileCommandsArrayStart === -1 ? -1 : curText.indexOf("]", curText.indexOf("[", curText.indexOf(":", compileCommandsArrayStart)) + 1);
         const compilerPathStart: number = curText.search(/\s*\"compilerPath\"\s*:\s*\"/);
         const compilerPathValueStart: number = curText.indexOf('"', curText.indexOf(":", compilerPathStart));
         const compilerPathEnd: number = compilerPathStart === -1 ? -1 : curText.indexOf('"', compilerPathValueStart + 1) + 1;
@@ -1941,7 +2003,7 @@ export class CppProperties {
             compilerPath = checkPathExists.path;
         }
         if (!compilerPathExists) {
-            compilerMessage = localize('cannot.find2', "Cannot find \"{0}\".", compilerPath);
+            compilerMessage = localize('cannot.find', "Cannot find: {0}", compilerPath);
             newSquiggleMetrics.PathNonExistent++;
         }
         if (compilerMessage) {
@@ -1968,7 +2030,7 @@ export class CppProperties {
             dotConfigPath = checkPathExists.path;
         }
         if (!dotConfigPathExists) {
-            dotConfigMessage = localize('cannot.find2', "Cannot find \"{0}\".", dotConfigPath);
+            dotConfigMessage = localize('cannot.find', "Cannot find: {0}", dotConfigPath);
             newSquiggleMetrics.PathNonExistent++;
         } else if (dotConfigPath && !util.checkFileExistsSync(dotConfigPath)) {
             dotConfigMessage = localize("path.is.not.a.file", "Path is not a file: {0}", dotConfigPath);
@@ -2067,7 +2129,7 @@ export class CppProperties {
                     let message: string = "";
                     if (!pathExists) {
                         if (curOffset >= forcedIncludeStart && curOffset <= forcedeIncludeEnd
-                                && !path.isAbsolute(expandedPaths[0])) {
+                            && !path.isAbsolute(expandedPaths[0])) {
                             continue; // Skip the error, because it could be resolved recursively.
                         }
                         let badPath = "";
@@ -2076,15 +2138,28 @@ export class CppProperties {
                         } else {
                             badPath = `"${expandedPaths[0]}"`;
                         }
-                        message = localize('cannot.find2', "Cannot find {0}", badPath);
+                        message = localize('cannot.find', "Cannot find: {0}", badPath);
                         newSquiggleMetrics.PathNonExistent++;
                     } else {
                         // Check for file versus path mismatches.
-                        if ((curOffset >= forcedIncludeStart && curOffset <= forcedeIncludeEnd) ||
-                                    (curOffset >= compileCommandsStart && curOffset <= compileCommandsEnd)) {
+                        if (curOffset >= forcedIncludeStart && curOffset <= forcedeIncludeEnd) {
                             if (expandedPaths.length > 1) {
                                 message = localize("multiple.paths.not.allowed", "Multiple paths are not allowed.");
                                 newSquiggleMetrics.MultiplePathsNotAllowed++;
+                            } else {
+                                const resolvedPath = this.resolvePath(expandedPaths[0]);
+                                if (util.checkFileExistsSync(resolvedPath)) {
+                                    continue;
+                                }
+
+                                message = localize("path.is.not.a.file", "Path is not a file: {0}", expandedPaths[0]);
+                                newSquiggleMetrics.PathNotAFile++;
+                            }
+                        } else if ((curOffset >= compileCommandsStart && curOffset <= compileCommandsEnd) ||
+                            (curOffset >= compileCommandsArrayStart && curOffset <= compileCommandsArrayEnd)) {
+                            if (expandedPaths.length > 1) {
+                                message = localize("multiple.paths.should.be.separate.entries", "Multiple paths should be separate entries in an array.");
+                                newSquiggleMetrics.MultiplePathsShouldBeSeparated++;
                             } else {
                                 const resolvedPath = this.resolvePath(expandedPaths[0]);
                                 if (util.checkFileExistsSync(resolvedPath)) {
@@ -2134,7 +2209,7 @@ export class CppProperties {
                         endOffset = curOffset + curMatch.length;
                         let message: string;
                         if (!pathExists) {
-                            message = localize('cannot.find2', "Cannot find \"{0}\".", expandedPaths[0]);
+                            message = localize('cannot.find', "Cannot find: {0}", expandedPaths[0]);
                             newSquiggleMetrics.PathNonExistent++;
                             const diagnostic: vscode.Diagnostic = new vscode.Diagnostic(
                                 new vscode.Range(document.positionAt(envTextStartOffSet + curOffset),
@@ -2172,6 +2247,9 @@ export class CppProperties {
         }
         if (newSquiggleMetrics.MultiplePathsNotAllowed !== this.prevSquiggleMetrics.get(currentConfiguration.name)?.MultiplePathsNotAllowed) {
             changedSquiggleMetrics.MultiplePathsNotAllowed = newSquiggleMetrics.MultiplePathsNotAllowed;
+        }
+        if (newSquiggleMetrics.MultiplePathsShouldBeSeparated !== this.prevSquiggleMetrics.get(currentConfiguration.name)?.MultiplePathsShouldBeSeparated) {
+            changedSquiggleMetrics.MultiplePathsShouldBeSeparated = newSquiggleMetrics.MultiplePathsShouldBeSeparated;
         }
         if (Object.keys(changedSquiggleMetrics).length > 0) {
             telemetry.logLanguageServerEvent("ConfigSquiggles", undefined, changedSquiggleMetrics);
@@ -2295,23 +2373,30 @@ export class CppProperties {
 
     public checkCompileCommands(): void {
         // Check for changes in case of file watcher failure.
-        const compileCommands: string | undefined = this.CurrentConfiguration?.compileCommands;
+        const compileCommands: string[] | undefined = this.CurrentConfiguration?.compileCommands;
         if (!compileCommands) {
             return;
         }
-        const compileCommandsFile: string | undefined = this.resolvePath(compileCommands);
-        fs.stat(compileCommandsFile, (err, stats) => {
-            if (err) {
-                if (err.code === "ENOENT" && this.compileCommandsFile) {
-                    this.compileCommandsFileWatchers = []; // reset file watchers
-                    this.onCompileCommandsChanged(compileCommandsFile);
-                    this.compileCommandsFile = null; // File deleted
+        compileCommands.forEach((path: string) => {
+            const compileCommandsFile: string | undefined = this.resolvePath(path);
+            fs.stat(compileCommandsFile, (err, stats) => {
+                if (err) {
+                    if (err.code === "ENOENT" && this.compileCommandsFiles.has(compileCommandsFile)) {
+                        this.compileCommandsFileWatchers.forEach((watcher: fs.FSWatcher) => watcher.close());
+                        this.compileCommandsFileWatchers = []; // reset file watchers
+                        this.onCompileCommandsChanged(compileCommandsFile);
+                        this.compileCommandsFiles.delete(compileCommandsFile); // File deleted
+                    }
+                } else {
+                    const compileCommandsLastChanged: Date | undefined = this.compileCommandsFileWatcherFallbackTime.get(compileCommandsFile);
+                    if (!this.compileCommandsFiles.has(compileCommandsFile) ||
+                        (compileCommandsLastChanged !== undefined && stats.mtime > compileCommandsLastChanged)) {
+                        this.compileCommandsFileWatcherFallbackTime.set(compileCommandsFile, new Date());
+                        this.onCompileCommandsChanged(compileCommandsFile);
+                        this.compileCommandsFiles.add(compileCommandsFile); // File created.
+                    }
                 }
-            } else if (stats.mtime > this.compileCommandsFileWatcherFallbackTime) {
-                this.compileCommandsFileWatcherFallbackTime = new Date();
-                this.onCompileCommandsChanged(compileCommandsFile);
-                this.compileCommandsFile = vscode.Uri.file(compileCommandsFile); // File created.
-            }
+            });
         });
     }
 

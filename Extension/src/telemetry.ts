@@ -66,7 +66,7 @@ export function activate(): void {
             const packageInfo: IPackageInfo = getPackageInfo();
             if (packageInfo) {
                 const targetPopulation: TargetPopulation = util.getCppToolsTargetPopulation();
-                experimentationTelemetry = new ExperimentationTelemetry(new TelemetryReporter(packageInfo.name, packageInfo.version, appInsightsKey));
+                experimentationTelemetry = new ExperimentationTelemetry(new TelemetryReporter(appInsightsKey));
                 initializationPromise = getExperimentationServiceAsync(packageInfo.name, packageInfo.version, targetPopulation, experimentationTelemetry, util.extensionContext.globalState);
             }
         }
@@ -83,6 +83,10 @@ export async function isExperimentEnabled(experimentName: string): Promise<boole
     if (new CppSettings().experimentalFeatures) {
         return true;
     }
+    return isFlightEnabled(experimentName);
+}
+
+export async function isFlightEnabled(experimentName: string): Promise<boolean> {
     const experimentationService: IExperimentationService | undefined = await getExperimentationService();
     const isEnabled: boolean | undefined = experimentationService?.getTreatmentVariable<boolean>("vscode", experimentName);
     return isEnabled ?? false;
@@ -113,6 +117,20 @@ export function logLanguageServerEvent(eventName: string, properties?: Record<st
     const sendTelemetry = () => {
         if (experimentationTelemetry) {
             const eventNamePrefix: string = "C_Cpp/LanguageServer/";
+            experimentationTelemetry.sendTelemetryEvent(eventNamePrefix + eventName, properties, metrics);
+        }
+    };
+
+    if (is.promise(initializationPromise)) {
+        return void initializationPromise.catch(logAndReturn.undefined).then(sendTelemetry).catch(logAndReturn.undefined);
+    }
+    sendTelemetry();
+}
+
+export function logCopilotEvent(eventName: string, properties?: Record<string, string>, metrics?: Record<string, number>): void {
+    const sendTelemetry = () => {
+        if (experimentationTelemetry) {
+            const eventNamePrefix: string = "C_Cpp/Copilot/";
             experimentationTelemetry.sendTelemetryEvent(eventNamePrefix + eventName, properties, metrics);
         }
     };
